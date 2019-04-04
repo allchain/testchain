@@ -145,7 +145,6 @@ function deploy_mcd_tdds {
   # . bin/deploy-ilk-col1 B
   # . bin/deploy-ilk-eth B
 
-  # TODO add this to out/addresses.json with jq
   MCD_PLAN=$(dapp create Plan)
   jq_inplace ".MCD_PLAN=${MCD_PLAN}" $TDDS/out/addresses.json
 
