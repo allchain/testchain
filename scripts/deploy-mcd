@@ -111,13 +111,23 @@ function jq_inplace {
   jq "$1" "$2" > $TMP && mv $TMP "$2"
 }
 
+function sed_inplace {
+  # sed's -i argument behaves differently on macOS, hence this hack
+  sed -i.bak "$1" $2 && rm $2.bak
+}
+
 function deploy_mcd_tdds {
   TDDS=$LIB/testchain-dss-deployment-scripts
   cd $TDDS
 
+  export MCD_PAUSE_DELAY=0
+
   # change price feeds to DSValue so we can set prices from within tests
   TMP=$(mktemp)
   jq_inplace '.tokens[].pip.type = "value"' step-1.json
+
+  # change step-1-deploy not to send 10000 ETH
+  sed_inplace 's/10000 eth/1 eth/' step-1-deploy
 
   # step 1 only
   ./step-1-deploy
@@ -128,17 +138,16 @@ function deploy_mcd_tdds {
   # jq_inplace '.tokens.COL1.pip.price = "234.56"' step-4.json
   # ./step-4-deploy
 
-  # add median for testing
-  cd $TDDS/contracts/median
-  PIP_ETH_MEDIAN=$(dapp create Median "$(seth --to-bytes32 "$(seth --from-ascii "${token}USD")")")
-  jq_inplace ".PIP_ETH_MEDIAN = \"${PIP_ETH_MEDIAN}\"" $TDDS/out/addresses.json
-
   # uncomment below to add more ilks
   # DPA=$LIB/testchain-dss-deployment-scripts/contracts/dss-proxy-actions
   # cd $DPA/lib/dss-cdp-manager/lib/dss-deploy/
   # export DAPP_SOLC_VERSION=0.5.0
   # . bin/deploy-ilk-col1 B
   # . bin/deploy-ilk-eth B
+
+  # TODO add this to out/addresses.json with jq
+  MCD_PLAN=$(dapp create Plan)
+  jq_inplace ".MCD_PLAN=${MCD_PLAN}" $TDDS/out/addresses.json
 
   ls \
     $TDDS/out/abi/* \
